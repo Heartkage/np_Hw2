@@ -17,7 +17,6 @@
 char filename[20];
 char *filedata;
 
-static void sig_alrm(int);
 int readfile(void);
 void dg_cli(int, struct sockaddr*, socklen_t);
 
@@ -54,18 +53,20 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 	char recvline[HEADER];
 	bool ok_to_send;
 
+	struct timeval tv;
+	tv.tv_sec = 0;
 
 	//Step 1, sending file name
 	current_ack = 0;
 	memset(sendline, 0, sizeof(sendline));
 	strcpy(sendline, "00000000");
 	strcat(sendline, filename);
-
-	signal(SIGALRM, sig_alrm);
-	siginterrupt(SIGALRM, 1);
 	
 	ok_to_send = true;
 	while(1){
+
+		tv.tv_usec = usecond;
+		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 	
 		if(ok_to_send){
 			int temp = sendto(sockfd, sendline, strlen(sendline), 0, server, len);
@@ -73,10 +74,8 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 			printf("%d\n", temp);
 		}
 			
-
-		ualarm(usecond, 0);
 		if((n = recvfrom(sockfd, recvline, sizeof(recvline), 0, NULL, NULL)) < 0){
-			if(errno == EINTR){
+			if(errno == EWOULDBLOCK){
 				printf("[Timeout] Resending filename datagram\n");
 				
 				if(usecond < 500000)
@@ -88,8 +87,6 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 		}
 		else{
 			if(current_ack == atoi(recvline)){
-				ualarm(0, 0);
-
 				printf("[Success] Filename Ack received\n");
 
 				if(usecond >= 20000)
@@ -112,6 +109,9 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 	while(!end){
 		memset(sendline, 0, sizeof(sendline));
 		memset(recvline, 0, sizeof(recvline));
+		
+		tv.tv_usec = usecond;
+		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
 		char num[HEADER];
 		sprintf(num, "%d", current_ack);
@@ -132,9 +132,8 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 		while(1){
 			sendto(sockfd, sendline, (i-current_read+HEADER), 0, server, len);
 
-			ualarm(usecond, 0);
 			if((n = recvfrom(sockfd, recvline, sizeof(recvline), 0, NULL, NULL)) < 0){
-				if(errno == EINTR){
+				if(errno == EWOULDBLOCK){
 					printf("[Timeout] Resending Packet %d\n", current_ack);
 				
 					if(usecond < 500000)
@@ -146,8 +145,6 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 			}
 			else{
 				if(current_ack == atoi(recvline)){
-					ualarm(0, 0);
-
 					printf("[Success] Packet %d ack received\n", current_ack);
 
 					if(usecond >= 20000)
@@ -170,11 +167,14 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 	
 	ok_to_send = true;
 	while(1){
-		sendto(sockfd, sendline, strlen(sendline), 0, server, len);
 
-		ualarm(usecond, 0);
+		sendto(sockfd, sendline, strlen(sendline), 0, server, len);
+		
+		tv.tv_usec = usecond;
+		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+		
 		if((n = recvfrom(sockfd, recvline, sizeof(recvline), 0, NULL, NULL)) < 0){
-			if(errno == EINTR){
+			if(errno == EWOULDBLOCK){
 				printf("[Timeout] Resending end packet\n");
 				
 				if(usecond < 500000)
@@ -186,8 +186,6 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 		}
 		else{
 			if(current_ack == atoi(recvline)){
-				ualarm(0, 0);
-
 				printf("[Success] End packet ack received\n");
 
 				if(usecond >= 20000)
@@ -222,8 +220,4 @@ int readfile(void){
 	fread(filedata, n, 1, ifile);
 
 	return n;
-}
-
-static void sig_alrm(int signo){
-	return;
 }
