@@ -22,7 +22,7 @@ void dg_server(int, struct sockaddr*, socklen_t);
 int main(int argc, char *argv[]) {
 
     if(argc != 2) {
-        fprintf(stderr, "[Usage] ./server <SERVER_IP>\n");
+        fprintf(stderr, "[Usage] ./receiver <Port>\n");
         exit(-1);
     }
 
@@ -39,7 +39,8 @@ int main(int argc, char *argv[]) {
     bind(sockfd, (struct sockaddr *) &server, sizeof(server));
 
     dg_server(sockfd, (struct sockaddr *) &client, sizeof(client));
-
+	
+	return 0;
 }
 
 void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
@@ -47,10 +48,11 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 	int n;
 	socklen_t len;
 	char recvline[MAXLINE];
-	char sendline[HEADER];
 
 	FILE *ofile;
 	int current_ack, last_ack = -1;
+
+	printf("[System] Server on!\n");
 
 	while(1){
 		
@@ -62,8 +64,6 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 		printf("%d data received\n", n);
 		
 		current_ack = msgdecode(recvline, n);
-		
-
 
 		if((current_ack == 0) && ((last_ack < current_ack) || (last_ack == 99999999))){
 			
@@ -76,34 +76,32 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 			ftruncate(fileno(ofile), 0);
 			fseek(ofile, 0, SEEK_SET);
 			
-			strcpy(sendline, "00000000");
-			sendto(sockfd, sendline, strlen(sendline), 0, client, len);
+			sendto(sockfd, "00000000", HEADER, 0, client, len);
 			printf("[New File] File name received, creating new file...\n");
 			last_ack = current_ack;
 			
 		}
 		else if((current_ack == 0) && (last_ack == 0)){
-			printf("[Duplicate] File name exist, resending ack...\n");
-			strcpy(sendline, "00000000");
-			
-			sendto(sockfd, sendline, strlen(sendline), 0, client, len);
+			printf("[Duplicate] File name exist, resending ack\n");
+
+			sendto(sockfd, recvline, HEADER, 0, client, len);
 		}
 		else if((current_ack == 99999999) && (last_ack < current_ack)){
-			printf("[Complete] EOF received, saving the file\n");
-			strcpy(sendline, "99999999");
-			sendto(sockfd, sendline, strlen(sendline), 0, client, len);
+			printf("[Complete] EOF received, saving the file...\n");
+		
+			sendto(sockfd, recvline, HEADER, 0, client, len);
 			fclose(ofile);
 			last_ack = current_ack;
 		}
 		else if((current_ack == 99999999) && (last_ack == current_ack)){
 			printf("[Duplicate] EOF data exist, resending EOF ack\n");
-			strcpy(sendline, "99999999");
-			sendto(sockfd, sendline, strlen(sendline), 0, client, len);
+			
+			sendto(sockfd, recvline, HEADER, 0, client, len);
 		}
 		else if(current_ack > last_ack){
 			
 			fwrite(filedata, 1, n-HEADER, ofile);
-			printf("[Writing...] Writing data %d to the file\n", current_ack);
+			printf("[Writing...] Writing data %d to the file...\n", current_ack);
 			
 			sendto(sockfd, recvline, HEADER, 0, client, len);
 			last_ack = current_ack;
@@ -115,7 +113,7 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 		}
 		else{
 			printf("[Error] Server Shutting down\n");
-			exit(1);
+			exit(-2);
 		}	
 
 	}
