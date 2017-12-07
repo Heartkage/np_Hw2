@@ -69,6 +69,7 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 			
 			char temp[20];
 			strcpy(temp, "result/");
+			filedata[n-HEADER] = 0;
 			strcat(temp, filedata);
 
 			ofile = fopen(temp, "w");
