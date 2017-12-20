@@ -50,7 +50,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 	int usecond = 10000;
 	int filelen = readfile();
 	char sendline[MAXLINE];
-	char recvline[HEADER];
+	char recvline[HEADER+1];
 	bool ok_to_send;
 
 	struct timeval tv;
@@ -86,6 +86,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 				err(4, "[Error] Recvfrom has error\n");
 		}
 		else{
+			recvline[8] = '\n';
 			if(current_ack == atoi(recvline)){
 				printf("[Success] Filename Ack received\n");
 
@@ -144,6 +145,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 					err(4, "[Error] Recvfrom has error\n");
 			}
 			else{
+				recvline[8] = '\n';
 				if(current_ack == atoi(recvline)){
 					printf("[Success] Packet %d ack received\n", current_ack);
 
@@ -185,6 +187,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 				err(4, "[Error] Recvfrom has error\n");
 		}
 		else{
+			recvline[8] = '\n';
 			if(current_ack == atoi(recvline)){
 				printf("[Success] End packet ack received\n");
 

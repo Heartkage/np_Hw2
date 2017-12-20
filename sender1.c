@@ -20,6 +20,7 @@ char *filedata;
 static void sig_alrm(int);
 int readfile(void);
 void dg_cli(int, struct sockaddr*, socklen_t);
+int ATOI(char*, int);
 
 int main(int argc, char *argv[]){
 
@@ -36,8 +37,8 @@ int main(int argc, char *argv[]){
 
 	bzero(&server, sizeof(server));
 	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = inet_addr(argv[1]);
-	server.sin_port = htons(atoi(argv[2]));
+	server.sin_port = htons(ATOI(argv[2], strlen(argv[2])));
+	inet_pton(AF_INET, argv[1], &server.sin_addr);
 
 	dg_cli(sockfd, (struct sockaddr *)&server, sizeof(server));
 
@@ -51,7 +52,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 	int usecond = 10000;
 	int filelen = readfile();
 	char sendline[MAXLINE];
-	char recvline[HEADER];
+	char recvline[HEADER+1];
 	bool ok_to_send;
 
 
@@ -60,7 +61,6 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 	memset(sendline, 0, sizeof(sendline));
 	strcpy(sendline, "00000000");
 	strcat(sendline, filename);
-
 	signal(SIGALRM, sig_alrm);
 	siginterrupt(SIGALRM, 1);
 	
@@ -68,9 +68,10 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 	while(1){
 	
 		if(ok_to_send){
+
 			int temp = sendto(sockfd, sendline, strlen(sendline), 0, server, len);
 			
-			printf("%d\n", temp);
+			printf("%d data sent\n", temp);
 		}
 			
 
@@ -87,6 +88,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 				err(4, "[Error] Recvfrom has error\n");
 		}
 		else{
+			recvline[8] = '\n';
 			if(current_ack == atoi(recvline)){
 				ualarm(0, 0);
 
@@ -114,6 +116,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 		memset(recvline, 0, sizeof(recvline));
 
 		char num[HEADER];
+		memset(num, 0, sizeof(num));
 		sprintf(num, "%d", current_ack);
 		strcpy(sendline, num);
 		
@@ -131,6 +134,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 		ok_to_send = true;
 		while(1){
 			sendto(sockfd, sendline, (i-current_read+HEADER), 0, server, len);
+			memset(recvline, 0, sizeof(recvline));
 
 			ualarm(usecond, 0);
 			if((n = recvfrom(sockfd, recvline, sizeof(recvline), 0, NULL, NULL)) < 0){
@@ -145,6 +149,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 					err(4, "[Error] Recvfrom has error\n");
 			}
 			else{
+				recvline[8] = '\n';
 				if(current_ack == atoi(recvline)){
 					ualarm(0, 0);
 
@@ -171,6 +176,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 	ok_to_send = true;
 	while(1){
 		sendto(sockfd, sendline, strlen(sendline), 0, server, len);
+		memset(recvline, 0, sizeof(recvline));
 
 		ualarm(usecond, 0);
 		if((n = recvfrom(sockfd, recvline, sizeof(recvline), 0, NULL, NULL)) < 0){
@@ -185,6 +191,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 				err(4, "[Error] Recvfrom has error\n");
 		}
 		else{
+			recvline[8] = '\n';
 			if(current_ack == atoi(recvline)){
 				ualarm(0, 0);
 
@@ -226,4 +233,16 @@ int readfile(void){
 
 static void sig_alrm(int signo){
 	return;
+}
+
+int ATOI(char temp[8], int len){
+	int num = 0;
+	
+		
+	for(int i = 0; i < len; i++){
+		num *= 10;
+		num += temp[i]-48;
+	}
+	
+	return num;
 }

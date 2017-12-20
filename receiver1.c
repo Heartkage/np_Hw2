@@ -16,6 +16,7 @@
 
 char filedata[MAXLINE];
 
+int ATOI(char *, int);
 int msgdecode(char*, int);
 void dg_server(int, struct sockaddr*, socklen_t);
 
@@ -32,11 +33,13 @@ int main(int argc, char *argv[]) {
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
     bzero(&server, sizeof(server));
+    bzero(&client, sizeof(client));
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
-    server.sin_port = htons(atoi(argv[1]));
+    server.sin_port = htons(ATOI(argv[1], strlen(argv[1])));
 
-    bind(sockfd, (struct sockaddr *) &server, sizeof(server));
+    if(bind(sockfd, (struct sockaddr *) &server, sizeof(server)) < 0)
+	    exit(1);
 
     dg_server(sockfd, (struct sockaddr *) &client, sizeof(client));
 	
@@ -55,28 +58,38 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 	printf("[System] Server on!\n");
 
 	while(1){
-		
+		memset(recvline, 0, sizeof(recvline));	
 		len = clilen;
-		
-		if((n = recvfrom(sockfd, recvline, sizeof(recvline), 0, client, &len)) < 0)
+
+		if((n = recvfrom(sockfd, recvline, sizeof(recvline), 0, client, &len)) < 0){
 			err(2, "[Error] Recvfrom Failed\n");
+			exit(1);
+		}		
+
 		
-		printf("%d data received\n", n);
 		
 		current_ack = msgdecode(recvline, n);
+	
+		printf("Header = %d, %d data received\n", current_ack, n);
+			
 
 		if((current_ack == 0) && ((last_ack < current_ack) || (last_ack == 99999999))){
 			
-			char temp[20];
+			char temp[MAXLINE];
+			memset(temp, 0, sizeof(temp));
 			strcpy(temp, "result/");
-			filedata[n-HEADER] = 0;
 			strcat(temp, filedata);
 
 			ofile = fopen(temp, "w");
 			ftruncate(fileno(ofile), 0);
 			fseek(ofile, 0, SEEK_SET);
 			
-			sendto(sockfd, "00000000", HEADER, 0, client, len);
+			char temp2[9];
+			strcpy(temp2, "00000000");
+			
+			
+
+			sendto(sockfd, temp2, HEADER, 0, client, len);
 			printf("[New File] File name received, creating new file...\n");
 			last_ack = current_ack;
 			
@@ -88,7 +101,7 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 		}
 		else if((current_ack == 99999999) && (last_ack < current_ack)){
 			printf("[Complete] EOF received, saving the file...\n");
-		
+				
 			sendto(sockfd, recvline, HEADER, 0, client, len);
 			fclose(ofile);
 			last_ack = current_ack;
@@ -99,9 +112,8 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 			sendto(sockfd, recvline, HEADER, 0, client, len);
 		}
 		else if(current_ack > last_ack){
-			
-			fwrite(filedata, 1, n-HEADER, ofile);
 			printf("[Writing...] Writing data %d to the file...\n", current_ack);
+			fwrite(filedata, 1, n-HEADER, ofile);
 			
 			sendto(sockfd, recvline, HEADER, 0, client, len);
 			last_ack = current_ack;
@@ -123,13 +135,30 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 
 int msgdecode(char *recvline, int n){
 
-	char num[HEADER];
-
-	for(int i = 0; i < HEADER; i++)
-		num[i] = recvline[i];	
+	memset(filedata, 0, sizeof(filedata));
+	char num[HEADER+1];
+	int i;
+	for(i = 0; i < HEADER; i++)
+		num[i] = recvline[i];
 	
-	for(int i = HEADER; i < n; i++)
+			
+	int amount = i;
+
+	for(i = HEADER; i < n; i++)
 		filedata[i-HEADER] = recvline[i];
 
+	num[8] = '\n';
 	return (atoi(num));
+}
+
+
+int ATOI(char temp[20], int len){
+	int num = 0;
+
+	for(int i=0; i < len; i++){
+		num *= 10;
+		num += temp[i]-48;
+
+	}
+	return num;
 }
