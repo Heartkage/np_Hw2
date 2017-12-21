@@ -11,7 +11,7 @@ receiver1: receiver1.c
 receiver2: receiver2.c
 	gcc receiver2.c -o receiver2
 receiver3: receiver3.c
-	gcc receiver3.c -o receiver3
+	gcc receiver3.c -o receiver3 
 
 clean:
 	rm -f sender1 sender2 sender3 receiver1 receiver2 receiver3

@@ -141,7 +141,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 				if((n = recvfrom(sockfd, recvline, sizeof(recvline), 0, NULL, NULL)) < 0)
 					err(4, "[Error] Recvfrom has error\n");
 
-				recvline[8] == '\n';
+				recvline[8] = '\n';
 
 				if(current_ack == atoi(recvline)){
 					printf("[Success] Packet %d ack received\n", current_ack);

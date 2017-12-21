@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     bzero(&client, sizeof(client));
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
-    server.sin_port = htons(ATOI(argv[1], strlen(argv[1])));
+    server.sin_port = htons(atoi(argv[1]));
 
     if(bind(sockfd, (struct sockaddr *) &server, sizeof(server)) < 0)
 	    exit(1);
@@ -156,14 +156,3 @@ int msgdecode(char *recvline, int n){
 	return (atoi(num));
 }
 
-
-int ATOI(char temp[20], int len){
-	int num = 0;
-
-	for(int i=0; i < len; i++){
-		num *= 10;
-		num += temp[i]-48;
-
-	}
-	return num;
-}

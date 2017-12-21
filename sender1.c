@@ -37,7 +37,7 @@ int main(int argc, char *argv[]){
 
 	bzero(&server, sizeof(server));
 	server.sin_family = AF_INET;
-	server.sin_port = htons(ATOI(argv[2], strlen(argv[2])));
+	server.sin_port = htons(atoi(argv[2]));
 	inet_pton(AF_INET, argv[1], &server.sin_addr);
 
 	dg_cli(sockfd, (struct sockaddr *)&server, sizeof(server));
@@ -94,7 +94,7 @@ void dg_cli(int sockfd, struct sockaddr* server, socklen_t len){
 
 				printf("[Success] Filename Ack received\n");
 
-				if(usecond >= 20000)
+			if(usecond >= 20000)
 					usecond -= 10000;
 
 				current_ack++;
@@ -235,14 +235,3 @@ static void sig_alrm(int signo){
 	return;
 }
 
-int ATOI(char temp[8], int len){
-	int num = 0;
-	
-		
-	for(int i = 0; i < len; i++){
-		num *= 10;
-		num += temp[i]-48;
-	}
-	
-	return num;
-}
