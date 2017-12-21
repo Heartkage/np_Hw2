@@ -10,6 +10,8 @@
 #include<sys/socket.h>
 #include<sys/select.h>
 #include<signal.h>
+#include<sys/stat.h>
+#include<sys/types.h>
 
 #define MAXLINE 1008
 #define HEADER 8
@@ -55,6 +57,8 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 	FILE *ofile;
 	int current_ack, last_ack = -1;
 
+	int status;
+	status = mkdir("result", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 	printf("[System] Server on!\n");
 
 	while(1){
@@ -78,6 +82,7 @@ void dg_server(int sockfd, struct sockaddr* client, socklen_t clilen){
 			char temp[MAXLINE];
 			memset(temp, 0, sizeof(temp));
 			strcpy(temp, "result/");
+			filedata[n-HEADER] = '\0';
 			strcat(temp, filedata);
 
 			ofile = fopen(temp, "w");
@@ -147,7 +152,7 @@ int msgdecode(char *recvline, int n){
 	for(i = HEADER; i < n; i++)
 		filedata[i-HEADER] = recvline[i];
 
-	num[8] = '\n';
+	num[8] = '\0';
 	return (atoi(num));
 }
 
